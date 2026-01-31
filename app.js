@@ -1,158 +1,174 @@
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-const fileInput = document.getElementById("file");
+const file = document.getElementById("file");
 const zoomEl = document.getElementById("zoom");
 const zoomText = document.getElementById("zoomText");
-const btnDownload = document.getElementById("download");
-const btnReset = document.getElementById("reset");
-const btnFit = document.getElementById("fit");
+const download = document.getElementById("download");
+const reset = document.getElementById("reset");
+const fit = document.getElementById("fit");
 
-const FRAME_SRC = "frame.png"; // আপনার frame.png (একই ফোল্ডারে)
+let currentFrame = "frame1.png";
 
 let userImg = null;
 let frameImg = new Image();
 
-let zoom = 1;
-let offsetX = 0;
-let offsetY = 0;
+let zoom = 1, x = 0, y = 0;
 
-let dragging = false;
-let lastX = 0;
-let lastY = 0;
-let activePointerId = null;
+let drag = false, lx = 0, ly = 0, pid = null;
 
-canvas.style.touchAction = "none";
+canvas.style.touchAction="none";
 
-frameImg.src = FRAME_SRC;
-frameImg.onload = () => draw();
-frameImg.onerror = () => alert("frame.png পাওয়া যায়নি। একই ফোল্ডারে frame.png আছে কিনা চেক করুন।");
+frameImg.src=currentFrame;
+frameImg.onload=()=>draw();
 
-function clear() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawBackground() {
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawUserImage() {
-  if (!userImg) return;
-
-  const cw = canvas.width, ch = canvas.height;
-  const iw = userImg.width, ih = userImg.height;
-
-  // cover-fit so no empty gaps
-  const coverScale = Math.max(cw / iw, ch / ih);
-  const scale = coverScale * zoom;
-
-  const w = iw * scale;
-  const h = ih * scale;
-
-  const x = (cw - w) / 2 + offsetX;
-  const y = (ch - h) / 2 + offsetY;
-
-  ctx.drawImage(userImg, x, y, w, h);
-}
-
-function drawFrame() {
-  if (!frameImg.complete) return;
-  ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
-}
-
-function draw() {
-  clear();
-  drawBackground();
-  drawUserImage();
-  drawFrame();
-}
-
-function resetAll() {
-  zoom = 1;
-  offsetX = 0;
-  offsetY = 0;
-
-  zoomEl.value = String(zoom);
-  zoomText.textContent = `${zoom.toFixed(2)}x`;
-  draw();
-}
-
-function centerOnly() {
-  offsetX = 0;
-  offsetY = 0;
-  draw();
-}
-
-zoomEl.addEventListener("input", () => {
-  zoom = Number(zoomEl.value);
-  zoomText.textContent = `${zoom.toFixed(2)}x`;
-  draw();
+/* BG Remove */
+let segment = new SelfieSegmentation({
+locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`
 });
 
-fileInput.addEventListener("change", (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
+segment.setOptions({modelSelection:1,selfieMode:true});
 
-  const img = new Image();
-  img.onload = () => {
-    userImg = img;
-    resetAll();
-  };
-  img.src = URL.createObjectURL(f);
+/* Upload + Remove BG */
+file.addEventListener("change",e=>{
+const f=e.target.files[0];
+if(!f) return;
+
+const img=new Image();
+img.src=URL.createObjectURL(f);
+
+img.onload=async()=>{
+
+await segment.send({image:img});
+
+segment.onResults(r=>{
+
+const c=document.createElement("canvas");
+c.width=img.width;
+c.height=img.height;
+
+const cx=c.getContext("2d");
+
+cx.drawImage(img,0,0);
+cx.globalCompositeOperation="destination-in";
+cx.drawImage(r.segmentationMask,0,0,c.width,c.height);
+
+const out=new Image();
+out.onload=()=>{
+userImg=out;
+resetAll();
+};
+out.src=c.toDataURL("image/png");
+
+});
+};
 });
 
-btnReset.addEventListener("click", resetAll);
-btnFit.addEventListener("click", centerOnly);
+/* Frame Switch */
+document.querySelectorAll(".frame").forEach(b=>{
+b.onclick=()=>{
 
-btnDownload.addEventListener("click", () => {
-  if (!userImg) {
-    alert("আগে একটি ছবি আপলোড করুন।");
-    return;
-  }
-  draw();
-  const a = document.createElement("a");
-  a.download = "dp-frame.png";
-  a.href = canvas.toDataURL("image/png");
-  a.click();
+document.querySelectorAll(".frame")
+.forEach(x=>x.classList.remove("active"));
+
+b.classList.add("active");
+
+currentFrame=b.dataset.f;
+frameImg.src=currentFrame;
+};
 });
 
-/* ===== Ultra Smooth Drag (Pointer Events) ===== */
-function getCanvasPoint(ev) {
-  const rect = canvas.getBoundingClientRect();
-  const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
-  const y = (ev.clientY - rect.top) * (canvas.height / rect.height);
-  return { x, y };
+/* Zoom */
+zoomEl.oninput=()=>{
+zoom=+zoomEl.value;
+zoomText.textContent=zoom.toFixed(2)+"x";
+draw();
+};
+
+reset.onclick=resetAll;
+fit.onclick=()=>{x=0;y=0;draw();};
+
+/* Download */
+download.onclick=()=>{
+if(!userImg){alert("Upload photo first");return;}
+
+draw();
+
+const a=document.createElement("a");
+a.download="dp.png";
+a.href=canvas.toDataURL("image/png");
+a.click();
+};
+
+/* Draw */
+function draw(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="#000";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+if(userImg){
+
+const cs=Math.max(
+canvas.width/userImg.width,
+canvas.height/userImg.height
+)*zoom;
+
+const w=userImg.width*cs;
+const h=userImg.height*cs;
+
+ctx.drawImage(
+userImg,
+(canvas.width-w)/2+x,
+(canvas.height-h)/2+y,
+w,h
+);
 }
 
-canvas.addEventListener("pointerdown", (ev) => {
-  if (!userImg) return;
-
-  activePointerId = ev.pointerId;
-  canvas.setPointerCapture(activePointerId);
-
-  dragging = true;
-  const p = getCanvasPoint(ev);
-  lastX = p.x;
-  lastY = p.y;
-});
-
-canvas.addEventListener("pointermove", (ev) => {
-  if (!dragging || ev.pointerId !== activePointerId) return;
-
-  const p = getCanvasPoint(ev);
-  offsetX += (p.x - lastX);
-  offsetY += (p.y - lastY);
-  lastX = p.x;
-  lastY = p.y;
-  draw();
-});
-
-function endDrag(ev) {
-  if (ev.pointerId !== activePointerId) return;
-  dragging = false;
-  activePointerId = null;
+ctx.drawImage(frameImg,0,0,canvas.width,canvas.height);
 }
 
-canvas.addEventListener("pointerup", endDrag);
-canvas.addEventListener("pointercancel", endDrag);
+function resetAll(){
+zoom=1;x=0;y=0;
+zoomEl.value=1;
+zoomText.textContent="1.00x";
+draw();
+}
+
+/* Smooth Drag */
+function p(e){
+const r=canvas.getBoundingClientRect();
+return{
+x:(e.clientX-r.left)*(canvas.width/r.width),
+y:(e.clientY-r.top)*(canvas.height/r.height)
+};
+}
+
+canvas.onpointerdown=e=>{
+if(!userImg)return;
+
+pid=e.pointerId;
+canvas.setPointerCapture(pid);
+
+drag=true;
+
+const pt=p(e);
+lx=pt.x; ly=pt.y;
+};
+
+canvas.onpointermove=e=>{
+if(!drag||e.pointerId!==pid)return;
+
+const pt=p(e);
+
+x+=pt.x-lx;
+y+=pt.y-ly;
+
+lx=pt.x; ly=pt.y;
+
+draw();
+};
+
+canvas.onpointerup=()=>{drag=false;pid=null};
+canvas.onpointercancel=()=>{drag=false;pid=null};
