@@ -15,9 +15,6 @@ const btnFit = document.getElementById("fit");
 
 const toastEl = document.getElementById("toast");
 
-// ✅ Exact circle for your frame (1080x1080)
-const CIRCLE = { x: 540, y: 470, r: 420 };
-
 // ===== State =====
 let currentFrame = "frame1.png";
 let userImg = null;
@@ -47,47 +44,14 @@ frameImg.src = currentFrame;
 frameImg.onload = () => draw();
 frameImg.onerror = () => toast("Frame লোড হয়নি (ফাইল নাম/পাথ চেক করুন)");
 
-// ===== BG Remove (Free) =====
+// ===== BG Remove (Free, stable) =====
 const segmenter = new SelfieSegmentation({
   locateFile: (file) =>
     `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
 });
 segmenter.setOptions({ modelSelection: 1, selfieMode: true });
 
-// onResults একবারই সেট
-segmenter.onResults((res) => {
-  if (!pendingUploadImg) return;
-
-  const img = pendingUploadImg;
-  pendingUploadImg = null;
-
-  const mask = res.segmentationMask;
-
-  const cut = document.createElement("canvas");
-  cut.width = img.width;
-  cut.height = img.height;
-  const cctx = cut.getContext("2d");
-
-  // draw original
-  cctx.drawImage(img, 0, 0);
-
-  // keep only person with smoother edges
-  cctx.globalCompositeOperation = "destination-in";
-  cctx.filter = "blur(7px)"; // ✅ smooth/feather edge (6-8 best)
-  cctx.drawImage(mask, 0, 0, img.width, img.height);
-  cctx.filter = "none";
-
-  const finalImg = new Image();
-  finalImg.onload = () => {
-    userImg = finalImg;
-    resetAll();
-    toast("✅ Photo loaded");
-  };
-  finalImg.src = cut.toDataURL("image/png");
-});
-
-let pendingUploadImg = null;
-
+// ===== Draw helpers =====
 function drawBackground(targetCtx, W, H) {
   targetCtx.fillStyle = "#000";
   targetCtx.fillRect(0, 0, W, H);
@@ -98,24 +62,11 @@ function drawFrame(targetCtx, W, H) {
   targetCtx.drawImage(frameImg, 0, 0, W, H);
 }
 
-// ✅ user শুধু লাল গোলের মধ্যে
+// User photo (transparent bg already) — Frame stays visible depending on order
 function drawUserImage(targetCtx, W, H, scaleFactor) {
   if (!userImg) return;
 
-  targetCtx.save();
-  targetCtx.beginPath();
-  targetCtx.arc(
-    CIRCLE.x * scaleFactor,
-    CIRCLE.y * scaleFactor,
-    CIRCLE.r * scaleFactor,
-    0,
-    Math.PI * 2
-  );
-  targetCtx.closePath();
-  targetCtx.clip();
-
   const iw = userImg.width, ih = userImg.height;
-
   const coverScale = Math.max(W / iw, H / ih);
   const scale = coverScale * zoom;
 
@@ -126,17 +77,19 @@ function drawUserImage(targetCtx, W, H, scaleFactor) {
   const y = (H - h) / 2 + offsetY * scaleFactor;
 
   targetCtx.drawImage(userImg, x, y, w, h);
-  targetCtx.restore();
 }
 
 function renderToContext(targetCtx, outSize) {
   const W = outSize, H = outSize;
-  const scaleFactor = outSize / canvas.width; // 1080->export size scale
+  const scaleFactor = outSize / canvas.width;
 
   targetCtx.clearRect(0, 0, W, H);
   drawBackground(targetCtx, W, H);
 
-  // Frame first (background), user on top (clipped to circle)
+  // 🔁 Order:
+  // If you want user on top of frame -> drawFrame first then drawUserImage
+  // If you want frame on top -> drawUserImage first then drawFrame
+  // (আপনার আগের পছন্দ অনুযায়ী: Frame background, user on top)
   drawFrame(targetCtx, W, H);
   drawUserImage(targetCtx, W, H, scaleFactor);
 }
@@ -172,16 +125,44 @@ qualityEl.addEventListener("change", () => {
   qText.textContent = qualityEl.value;
 });
 
-// ===== Upload + Remove BG =====
+// ===== Upload + Remove BG (stable transparent cutout) =====
 fileInput.addEventListener("change", (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
 
-  toast("Processing photo…");
+  toast("ব্যাকগ্রাউন্ড রিমুভ হচ্ছে...");
+
   const img = new Image();
-  img.onload = () => {
-    pendingUploadImg = img;
-    segmenter.send({ image: img }).catch(() => toast("BG remove failed"));
+  img.onload = async () => {
+    // set results handler for THIS image
+    segmenter.onResults((res) => {
+      const mask = res.segmentationMask;
+
+      const cut = document.createElement("canvas");
+      cut.width = img.width;
+      cut.height = img.height;
+
+      const cctx = cut.getContext("2d");
+      cctx.drawImage(img, 0, 0);
+
+      // Transparent background
+      cctx.globalCompositeOperation = "destination-in";
+      cctx.drawImage(mask, 0, 0, img.width, img.height);
+
+      const finalImg = new Image();
+      finalImg.onload = () => {
+        userImg = finalImg;
+        resetAll();
+        toast("✅ রেডি!");
+      };
+      finalImg.src = cut.toDataURL("image/png");
+    });
+
+    try {
+      await segmenter.send({ image: img });
+    } catch {
+      toast("BG remove failed");
+    }
   };
   img.src = URL.createObjectURL(f);
 });
@@ -194,7 +175,7 @@ document.querySelectorAll(".frame").forEach((b) => {
 
     currentFrame = b.dataset.f;
     frameImg.src = currentFrame;
-    toast("Frame changed");
+    toast("ফ্রেম পরিবর্তন হয়েছে");
   });
 });
 
@@ -202,7 +183,7 @@ document.querySelectorAll(".frame").forEach((b) => {
 btnReset.addEventListener("click", resetAll);
 btnFit.addEventListener("click", centerOnly);
 
-// ===== Export helper =====
+// ===== Export helper (HD/Ultra) =====
 function exportCanvasBlob(size) {
   return new Promise((resolve, reject) => {
     if (!userImg) return reject(new Error("No photo"));
@@ -233,7 +214,7 @@ btnDownload.addEventListener("click", async () => {
     a.click();
     URL.revokeObjectURL(url);
 
-    toast("✅ Download started");
+    toast("✅ ডাউনলোড শুরু হয়েছে");
   } catch {
     toast("আগে ছবি আপলোড করুন");
   }
@@ -248,14 +229,13 @@ btnShare.addEventListener("click", async () => {
 
     if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
       await navigator.share({ title: "DP Maker", text: "My DP", files: [file] });
-      toast("✅ Shared");
+      toast("✅ শেয়ার হয়েছে");
       return;
     }
 
-    // fallback: open image
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
-    toast("Share not supported—opened image");
+    toast("শেয়ার সাপোর্ট নেই—ছবি ওপেন হয়েছে");
   } catch {
     toast("আগে ছবি আপলোড করুন");
   }
