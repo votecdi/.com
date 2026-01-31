@@ -15,8 +15,12 @@ const btnFit = document.getElementById("fit");
 
 const toastEl = document.getElementById("toast");
 
-// ===== State =====
+// ========= Files =========
+// frame1.png / frame2.png (transparent hole)
+// logo.png (watermark; transparent png recommended)
 let currentFrame = "frame1.png";
+
+// ========= State =========
 let userImg = null;
 let frameImg = new Image();
 
@@ -31,7 +35,7 @@ let activePointerId = null;
 
 canvas.style.touchAction = "none";
 
-// ===== Toast =====
+// ========= Toast =========
 let toastTimer = null;
 function toast(msg) {
   toastEl.textContent = msg;
@@ -39,31 +43,22 @@ function toast(msg) {
   toastTimer = setTimeout(() => (toastEl.textContent = ""), 2200);
 }
 
-// ===== Frame load =====
+// ========= Load Frame =========
 frameImg.src = currentFrame;
-frameImg.onload = () => draw();
+frameImg.onload = () => drawPreview();
 frameImg.onerror = () => toast("Frame লোড হয়নি (ফাইল নাম/পাথ চেক করুন)");
 
-// ===== BG Remove (Free, stable) =====
-const segmenter = new SelfieSegmentation({
-  locateFile: (file) =>
-    `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
-});
-segmenter.setOptions({ modelSelection: 1, selfieMode: true });
+// ========= Load Logo (for export only) =========
+const logoImg = new Image();
+logoImg.src = "logo.png"; // if missing, watermark will be skipped
 
-// ===== Draw helpers =====
+// ========= Draw helpers =========
 function drawBackground(targetCtx, W, H) {
   targetCtx.fillStyle = "#000";
   targetCtx.fillRect(0, 0, W, H);
 }
 
-function drawFrame(targetCtx, W, H) {
-  if (!frameImg.complete) return;
-  targetCtx.drawImage(frameImg, 0, 0, W, H);
-}
-
-// User photo (transparent bg already) — Frame stays visible depending on order
-function drawUserImage(targetCtx, W, H, scaleFactor) {
+function drawUser(targetCtx, W, H, scaleFactor) {
   if (!userImg) return;
 
   const iw = userImg.width, ih = userImg.height;
@@ -79,95 +74,95 @@ function drawUserImage(targetCtx, W, H, scaleFactor) {
   targetCtx.drawImage(userImg, x, y, w, h);
 }
 
-function renderToContext(targetCtx, outSize) {
+function drawFrame(targetCtx, W, H) {
+  if (!frameImg.complete) return;
+  targetCtx.drawImage(frameImg, 0, 0, W, H);
+}
+
+// ✅ Preview: user + frame (NO logo)
+function renderPreview(targetCtx, outSize) {
   const W = outSize, H = outSize;
   const scaleFactor = outSize / canvas.width;
 
   targetCtx.clearRect(0, 0, W, H);
   drawBackground(targetCtx, W, H);
 
-  // 🔁 Order:
-  // If you want user on top of frame -> drawFrame first then drawUserImage
-  // If you want frame on top -> drawUserImage first then drawFrame
-  // (আপনার আগের পছন্দ অনুযায়ী: Frame background, user on top)
+  // Transparent-hole frame হলে:
+  // user আগে আঁকা → তারপর frame (frame এর hole দিয়ে user দেখা যাবে)
+  drawUser(targetCtx, W, H, scaleFactor);
   drawFrame(targetCtx, W, H);
-  drawUserImage(targetCtx, W, H, scaleFactor);
 }
 
-function draw() {
-  renderToContext(ctx, canvas.width);
+function drawPreview() {
+  renderPreview(ctx, canvas.width);
 }
 
+// ✅ Export: user + frame + logo watermark (ONLY on download/share)
+function renderExport(targetCtx, outSize) {
+  const W = outSize, H = outSize;
+  const scaleFactor = outSize / canvas.width;
+
+  targetCtx.clearRect(0, 0, W, H);
+  drawBackground(targetCtx, W, H);
+
+  drawUser(targetCtx, W, H, scaleFactor);
+  drawFrame(targetCtx, W, H);
+
+  // Watermark logo bottom-center
+  if (logoImg.complete && logoImg.naturalWidth > 0) {
+    const size = W * 0.14;                 // logo size
+    const x = (W - size) / 2;
+    const y = H - size - (W * 0.07);       // bottom margin
+
+    targetCtx.save();
+    targetCtx.globalAlpha = 0.95;
+    targetCtx.drawImage(logoImg, x, y, size, size);
+    targetCtx.restore();
+  }
+}
+
+// ========= Controls =========
 function resetAll() {
   zoom = 1;
   offsetX = 0;
   offsetY = 0;
   zoomEl.value = String(zoom);
   zoomText.textContent = `${zoom.toFixed(2)}x`;
-  draw();
+  drawPreview();
 }
 
 function centerOnly() {
   offsetX = 0;
   offsetY = 0;
-  draw();
+  drawPreview();
 }
 
-// ===== Zoom =====
 zoomEl.addEventListener("input", () => {
   zoom = Number(zoomEl.value);
   zoomText.textContent = `${zoom.toFixed(2)}x`;
-  draw();
+  drawPreview();
 });
 
-// ===== Quality =====
 qualityEl.addEventListener("change", () => {
   qText.textContent = qualityEl.value;
 });
 
-// ===== Upload + Remove BG (stable transparent cutout) =====
+// ========= Upload (NO BG REMOVE) =========
 fileInput.addEventListener("change", (e) => {
   const f = e.target.files?.[0];
   if (!f) return;
 
-  toast("ব্যাকগ্রাউন্ড রিমুভ হচ্ছে...");
-
   const img = new Image();
-  img.onload = async () => {
-    // set results handler for THIS image
-    segmenter.onResults((res) => {
-      const mask = res.segmentationMask;
-
-      const cut = document.createElement("canvas");
-      cut.width = img.width;
-      cut.height = img.height;
-
-      const cctx = cut.getContext("2d");
-      cctx.drawImage(img, 0, 0);
-
-      // Transparent background
-      cctx.globalCompositeOperation = "destination-in";
-      cctx.drawImage(mask, 0, 0, img.width, img.height);
-
-      const finalImg = new Image();
-      finalImg.onload = () => {
-        userImg = finalImg;
-        resetAll();
-        toast("✅ রেডি!");
-      };
-      finalImg.src = cut.toDataURL("image/png");
-    });
-
-    try {
-      await segmenter.send({ image: img });
-    } catch {
-      toast("BG remove failed");
-    }
+  img.onload = () => {
+    userImg = img;
+    resetAll();
+    toast("✅ ছবি লোড হয়েছে");
   };
+  img.onerror = () => toast("ছবি লোড হয়নি");
   img.src = URL.createObjectURL(f);
 });
 
-// ===== Frame Switch =====
+// ========= Frame Switch =========
 document.querySelectorAll(".frame").forEach((b) => {
   b.addEventListener("click", () => {
     document.querySelectorAll(".frame").forEach((x) => x.classList.remove("active"));
@@ -179,12 +174,11 @@ document.querySelectorAll(".frame").forEach((b) => {
   });
 });
 
-// ===== Buttons =====
 btnReset.addEventListener("click", resetAll);
 btnFit.addEventListener("click", centerOnly);
 
-// ===== Export helper (HD/Ultra) =====
-function exportCanvasBlob(size) {
+// ========= Export helpers =========
+function exportBlob(size) {
   return new Promise((resolve, reject) => {
     if (!userImg) return reject(new Error("No photo"));
 
@@ -193,7 +187,7 @@ function exportCanvasBlob(size) {
     out.height = size;
     const octx = out.getContext("2d");
 
-    renderToContext(octx, size);
+    renderExport(octx, size);
 
     out.toBlob((blob) => {
       if (!blob) return reject(new Error("Blob failed"));
@@ -205,7 +199,7 @@ function exportCanvasBlob(size) {
 btnDownload.addEventListener("click", async () => {
   try {
     const size = Number(qualityEl.value || 1080);
-    const blob = await exportCanvasBlob(size);
+    const blob = await exportBlob(size);
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -220,19 +214,19 @@ btnDownload.addEventListener("click", async () => {
   }
 });
 
-// ===== Share =====
 btnShare.addEventListener("click", async () => {
   try {
     const size = Number(qualityEl.value || 1080);
-    const blob = await exportCanvasBlob(size);
+    const blob = await exportBlob(size);
     const file = new File([blob], `dp-${size}.png`, { type: "image/png" });
 
     if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-      await navigator.share({ title: "DP Maker", text: "My DP", files: [file] });
+      await navigator.share({ title: "DP Maker", text: "DP", files: [file] });
       toast("✅ শেয়ার হয়েছে");
       return;
     }
 
+    // fallback open
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
     toast("শেয়ার সাপোর্ট নেই—ছবি ওপেন হয়েছে");
@@ -241,7 +235,7 @@ btnShare.addEventListener("click", async () => {
   }
 });
 
-// ===== Ultra Smooth Drag (Pointer Events) =====
+// ========= Smooth Drag =========
 function getCanvasPoint(ev) {
   const rect = canvas.getBoundingClientRect();
   const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
@@ -251,7 +245,6 @@ function getCanvasPoint(ev) {
 
 canvas.addEventListener("pointerdown", (ev) => {
   if (!userImg) return;
-
   activePointerId = ev.pointerId;
   canvas.setPointerCapture(activePointerId);
 
@@ -263,13 +256,14 @@ canvas.addEventListener("pointerdown", (ev) => {
 
 canvas.addEventListener("pointermove", (ev) => {
   if (!dragging || ev.pointerId !== activePointerId) return;
-
   const p = getCanvasPoint(ev);
+
   offsetX += (p.x - lastX);
   offsetY += (p.y - lastY);
   lastX = p.x;
   lastY = p.y;
-  draw();
+
+  drawPreview();
 });
 
 function endDrag(ev) {
@@ -280,7 +274,7 @@ function endDrag(ev) {
 canvas.addEventListener("pointerup", endDrag);
 canvas.addEventListener("pointercancel", endDrag);
 
-// ===== PWA Service Worker register =====
+// ========= PWA =========
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
