@@ -1,57 +1,35 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<h1 class="title">No Boat No Vote</h1>
+<p class="subtitle">Make Your Profile Picture</p>
 
-<title>No Boat No Vote | DP Maker</title>
+<div class="canvas-box">
+  <canvas id="c" width="1080" height="1080"></canvas>
+</div>
 
-<!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Montserrat:wght@600;800&display=swap" rel="stylesheet">
+<div class="controls">
 
-<link rel="stylesheet" href="style.css">
-</head>
+  <label class="upload-btn">
+    Upload Photo
+    <input type="file" id="file" accept="image/*">
+  </label>
 
-<body>
-
-<div class="container">
-
-  <h1>No Boat No Vote</h1>
-  <p class="subtitle">Make Your Profile Picture</p>
-
-  <div class="canvas-box">
-    <canvas id="c" width="1080" height="1080"></canvas>
+  <div class="zoom-box">
+    <span>Zoom</span>
+    <input type="range" id="zoom" min="0.5" max="3" step="0.01" value="1">
   </div>
 
-  <div class="controls">
-
-    <label class="upload-btn">
-      Upload Photo
-      <input type="file" id="file" accept="image/*">
-    </label>
-
-    <div class="zoom-box">
-      <span>Zoom</span>
-      <input type="range" id="zoom" min="0.5" max="3" step="0.01" value="1">
-    </div>
-
-    <div class="btn-row">
-      <button id="fit">Center</button>
-      <button id="reset">Reset</button>
-    </div>
-
-    <button id="download" class="download">
-      Download DP
-    </button>
-
+  <div class="btn-row">
+    <button id="fit">Center</button>
+    <button id="reset">Reset</button>
   </div>
 
-  <footer>
-    © 2026 No Boat No Vote
-  </footer>
+  <button id="download" class="download">
+    Download DP
+  </button>
 
 </div>
 
-<script src="app.js"></script>
-</body>
-</html>
+<footer class="site-footer">
+  <div>© 2026 No Boat No Vote</div>
+  <div class="org">রাজশাহী বিশ্ববিদ্যালয় ছাত্রলীগ</div>
+</footer>
+
