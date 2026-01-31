@@ -1,4 +1,4 @@
-const CACHE = "dp-maker-v3";
+const CACHE = "dp-maker-v4";
 const CORE = [
   "./",
   "./index.html",
@@ -12,7 +12,6 @@ self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const c = await caches.open(CACHE);
     try { await c.addAll(CORE); } catch {}
-    // frame2 optional
     try { await c.add("./frame2.png"); } catch {}
   })());
   self.skipWaiting();
