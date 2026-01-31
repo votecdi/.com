@@ -8,11 +8,7 @@ body{
   background: radial-gradient(1200px 700px at 50% 0%, #0f5d25 0%, #07150c 55%, #05070a 100%);
 }
 
-.wrap{
-  max-width:560px;
-  margin:0 auto;
-  padding:18px 16px 26px;
-}
+.wrap{ max-width:560px; margin:0 auto; padding:18px 16px 26px; }
 
 .hero{ text-align:center; margin-top:6px; }
 .title{
@@ -51,18 +47,14 @@ canvas{
 .panel{ margin-top:14px; padding:14px; }
 
 .upload-btn{
-  display:block;
-  width:100%;
+  display:block; width:100%;
   border-radius:14px;
   padding:13px 14px;
-  cursor:pointer;
-  user-select:none;
+  cursor:pointer; user-select:none;
   text-align:center;
-
   background: linear-gradient(180deg, rgba(34,197,94,.98), rgba(22,163,74,.95));
   color:#06200c;
   font-weight:900;
-  letter-spacing:.2px;
   border:1px solid rgba(255,255,255,.12);
   box-shadow: 0 10px 22px rgba(34,197,94,.22);
 }
@@ -77,23 +69,13 @@ canvas{
   background: rgba(255,255,255,.05);
 }
 
-.frame-top, .zoom-top, .quality-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:8px;
-}
-.frame-label, .zoom-label, .quality-label{ opacity:.9; font-weight:800; }
-.zoom-val, .quality-val{ opacity:.85; font-weight:800; }
+.row-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.lbl{ opacity:.9; font-weight:800; }
+.val{ opacity:.85; font-weight:800; }
 
-.frames{
-  display:flex;
-  justify-content:center;
-  gap:10px;
-}
+.frames{ display:flex; justify-content:center; gap:10px; }
 .frame{
-  width:62px;
-  height:62px;
+  width:62px; height:62px;
   object-fit:cover;
   border-radius:12px;
   cursor:pointer;
@@ -106,10 +88,7 @@ canvas{
   box-shadow: 0 6px 18px rgba(34,197,94,.18);
 }
 
-input[type="range"]{
-  width:100%;
-  accent-color:#22c55e;
-}
+input[type="range"]{ width:100%; accent-color:#22c55e; }
 
 select{
   width:100%;
@@ -155,7 +134,6 @@ button:active{ transform:scale(.99); }
   line-height:1.45;
   text-align:center;
 }
-
 .toast{
   margin:10px 0 0;
   text-align:center;
