@@ -61,7 +61,7 @@ canvas{
 .upload-btn input{ display:none; }
 .upload-btn:hover{ filter:brightness(1.03); }
 
-.frame-box, .zoom-box, .quality{
+.box{
   margin:14px 0 12px;
   padding:12px;
   border-radius:14px;
