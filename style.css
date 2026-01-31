@@ -1,20 +1,116 @@
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0b0b0f;color:#fff}
-.wrap{max-width:720px;margin:0 auto;padding:18px}
-.title{margin:6px 0 8px;font-size:26px}
-.hint{margin:0 0 14px;opacity:.85;line-height:1.4}
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
 
-.stage{background:#111;border:1px solid #222;border-radius:14px;padding:12px}
-canvas{width:100%;height:auto;display:block;border-radius:12px;background:#000;touch-action:none}
+body{
+  font-family:'Poppins', sans-serif;
+  background:#0b2e13;
+  color:white;
+}
 
-.panel{margin-top:14px;padding:14px;border:1px solid #222;border-radius:14px;background:#0f0f14}
-.file{display:block;border:1px dashed #2a2a35;padding:12px;border-radius:12px;cursor:pointer;text-align:center;margin-bottom:12px}
-.file input{display:none}
-.row{margin:10px 0}
-.row label{display:flex;justify-content:space-between;opacity:.9;margin-bottom:6px}
-.row.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.container{
+  max-width:500px;
+  margin:auto;
+  padding:20px;
+  text-align:center;
+}
 
-button{border:1px solid #2a2a35;background:#161622;color:#fff;padding:10px 12px;border-radius:12px;cursor:pointer}
-button:active{transform:scale(.99)}
-.download{width:100%;padding:12px 14px;margin-top:8px;font-weight:700}
-.note{display:block;margin-top:10px;opacity:.7}
+h1{
+  font-family:'Montserrat', sans-serif;
+  font-size:32px;
+  font-weight:800;
+  margin-bottom:5px;
+}
+
+.subtitle{
+  opacity:0.9;
+  margin-bottom:15px;
+}
+
+.canvas-box{
+  background:#06200c;
+  padding:12px;
+  border-radius:12px;
+  border:2px solid #0f5d25;
+}
+
+canvas{
+  width:100%;
+  border-radius:10px;
+  background:black;
+}
+
+.controls{
+  margin-top:15px;
+  background:#06200c;
+  padding:15px;
+  border-radius:12px;
+  border:2px solid #0f5d25;
+}
+
+.upload-btn{
+  display:block;
+  background:#0f5d25;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.upload-btn input{
+  display:none;
+}
+
+.zoom-box{
+  margin:12px 0;
+}
+
+.zoom-box span{
+  display:block;
+  margin-bottom:5px;
+}
+
+input[type=range]{
+  width:100%;
+}
+
+.btn-row{
+  display:flex;
+  gap:10px;
+  margin:10px 0;
+}
+
+.btn-row button{
+  flex:1;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#145f2d;
+  color:white;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.download{
+  width:100%;
+  background:#1aa34a;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:700;
+  margin-top:10px;
+  cursor:pointer;
+}
+
+.download:hover{
+  background:#22c55e;
+}
+
+footer{
+  margin-top:15px;
+  font-size:13px;
+  opacity:0.7;
+}
